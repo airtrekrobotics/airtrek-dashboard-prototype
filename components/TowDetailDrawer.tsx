@@ -42,10 +42,10 @@ const TowDetailDrawer: React.FC<Props> = ({ log, onClose }) => {
           {/* Video Placeholder */}
           <div className="relative aspect-video bg-[#161B22] rounded-xl overflow-hidden mb-6 border border-gray-800 shadow-inner">
             <div className="absolute inset-0 flex items-center justify-center">
-              <img 
-                src="https://images.unsplash.com/photo-1464039397811-476f652a343b?auto=format&fit=crop&q=80&w=1000" 
-                className="w-full h-full object-cover opacity-50 grayscale contrast-125"
-                alt="Tow view"
+              <img
+                src={`${import.meta.env.BASE_URL}mission-footage.jpg`}
+                className="w-full h-full object-cover opacity-90"
+                alt="Mission footage"
               />
               <div className="absolute inset-0 bg-black/30" />
               <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all cursor-pointer group">
