@@ -115,7 +115,7 @@ const TowDetailDrawer: React.FC<Props> = ({ log, onClose }) => {
                   stroke="#00D1FF"
                   strokeWidth={3}
                   strokeLinecap="round"
-                  strokeLinejoin="round"
+                  strokeLinejoin="miter"
                   vectorEffect="non-scaling-stroke"
                   className="drop-shadow-[0_0_6px_#00D1FF]"
                 />

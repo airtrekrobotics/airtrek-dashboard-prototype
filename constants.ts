@@ -19,7 +19,7 @@ export const MOCK_LOGS: TowLog[] = [
     duration: '23m', 
     operator: 'C. Lee', 
     status: 'online',
-    details: { distance: '450 ft', maxSpeed: '2.1 mph', events: 1, batteryEnd: '84%', path: 'Hangar 1 -> Ramp' }
+    details: { distance: '450 ft', maxSpeed: '3.4 mph', events: 1, batteryEnd: '84%', path: 'Hangar 1 -> Ramp' }
   },
   { 
     id: '2', 
@@ -28,7 +28,7 @@ export const MOCK_LOGS: TowLog[] = [
     duration: '12m', 
     operator: 'H. Dossaji', 
     status: 'online',
-    details: { distance: '320 ft', maxSpeed: '1.8 mph', events: 0, batteryEnd: '92%', path: 'Hangar 2 -> Hangar 3' }
+    details: { distance: '320 ft', maxSpeed: '4.0 mph', events: 0, batteryEnd: '92%', path: 'Hangar 2 -> Hangar 3' }
   },
   { 
     id: '3', 
@@ -37,7 +37,7 @@ export const MOCK_LOGS: TowLog[] = [
     duration: '15m', 
     operator: 'J. Taylor', 
     status: 'online',
-    details: { distance: '410 ft', maxSpeed: '2.0 mph', events: 0, batteryEnd: '78%', path: 'Ramp -> Hangar 1' }
+    details: { distance: '410 ft', maxSpeed: '3.6 mph', events: 0, batteryEnd: '78%', path: 'Ramp -> Hangar 1' }
   },
   { 
     id: '4', 
@@ -46,7 +46,7 @@ export const MOCK_LOGS: TowLog[] = [
     duration: '20m', 
     operator: 'D. Ladnier', 
     status: 'online',
-    details: { distance: '500 ft', maxSpeed: '2.2 mph', events: 2, batteryEnd: '65%', path: 'Hangar 3 -> Ramp' }
+    details: { distance: '500 ft', maxSpeed: '4.2 mph', events: 2, batteryEnd: '65%', path: 'Hangar 3 -> Ramp' }
   },
   { 
     id: '5', 
@@ -55,7 +55,7 @@ export const MOCK_LOGS: TowLog[] = [
     duration: '18m', 
     operator: 'J. Doe',
     status: 'online',
-    details: { distance: '380 ft', maxSpeed: '1.9 mph', events: 0, batteryEnd: '88%', path: 'Hangar 1 -> Hangar 2' }
+    details: { distance: '380 ft', maxSpeed: '3.1 mph', events: 0, batteryEnd: '88%', path: 'Hangar 1 -> Hangar 2' }
   },
   { 
     id: '6', 
@@ -64,7 +64,7 @@ export const MOCK_LOGS: TowLog[] = [
     duration: '25m', 
     operator: 'M. Chen',
     status: 'online',
-    details: { distance: '520 ft', maxSpeed: '2.3 mph', events: 0, batteryEnd: '72%', path: 'Hangar 2 -> Ramp' }
+    details: { distance: '520 ft', maxSpeed: '3.8 mph', events: 0, batteryEnd: '72%', path: 'Hangar 2 -> Ramp' }
   },
   { 
     id: '7', 
@@ -73,7 +73,7 @@ export const MOCK_LOGS: TowLog[] = [
     duration: '14m', 
     operator: 'S. Ramos', 
     status: 'online',
-    details: { distance: '310 ft', maxSpeed: '1.7 mph', events: 0, batteryEnd: '91%', path: 'Ramp -> Hangar 3' }
+    details: { distance: '310 ft', maxSpeed: '3.3 mph', events: 0, batteryEnd: '91%', path: 'Ramp -> Hangar 3' }
   },
 ];
 
@@ -82,27 +82,30 @@ export interface MapPoint {
   y: number;
 }
 
-// Positions on public/facility-map.jpg, as percentages (x = left%, y = top%).
-// Each hangar point is its north-facing door; aircraft stay north of the
-// hangars, so trajectories travel along a lane north of these doors.
+// Hangar CENTER positions on public/facility-map.jpg, as percentages.
+// Aircraft park inside the hangar (its center) and are towed north out the
+// door, so trajectories run from the center up to a lane north of the hangars.
 const HANGAR_ZONES: Record<string, MapPoint> = {
-  'Hangar 1': { x: 14, y: 52 },
-  'Hangar 2': { x: 35, y: 52 },
-  'Hangar 3': { x: 56, y: 57 },
-  'Hangar 4': { x: 70, y: 57 },
-  'Hangar 5': { x: 85, y: 57 },
+  'Hangar 1': { x: 14, y: 64 },
+  'Hangar 2': { x: 35, y: 63 },
+  'Hangar 3': { x: 56, y: 69 },
+  'Hangar 4': { x: 70, y: 69 },
+  'Hangar 5': { x: 85, y: 69 },
 };
 
-const TRAVEL_LANE_Y = 45; // east-west lane, north of every hangar door
-const RAMP_APRON_Y = 22; // open apron, further north
+const TRAVEL_LANE_Y = 42; // east-west taxi lane, north of every hangar
+const RAMP_APRON_Y = 24; // parking apron, further north
 
-// "Ramp" isn't a fixed point — it resolves to the open apron directly north of
-// its partner hangar, so each route reads as pulling straight out / in.
+// "Ramp" resolves to an apron spot offset to the side of its partner hangar,
+// so the route bends into an L (with 90-degree turns) instead of going
+// straight, and different missions land on different spots.
 const resolveZone = (name: string, partner: string): MapPoint => {
   const zone = HANGAR_ZONES[name];
   if (zone) return zone;
   const partnerZone = HANGAR_ZONES[partner];
-  return { x: partnerZone ? partnerZone.x : 50, y: RAMP_APRON_Y };
+  const px = partnerZone ? partnerZone.x : 50;
+  const rampX = px < 50 ? Math.min(px + 18, 82) : Math.max(px - 18, 18);
+  return { x: rampX, y: RAMP_APRON_Y };
 };
 
 // Build the GPS trajectory for a route string like "Hangar 1 -> Ramp".
