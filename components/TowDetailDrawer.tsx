@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { TowLog } from '../types';
 import { getTrajectory } from '../constants';
 
@@ -8,11 +8,22 @@ interface Props {
   onClose: () => void;
 }
 
+type CameraView = 'left' | 'right' | 'sensor';
+
+const CAMERA_VIEWS: { key: CameraView; label: string; image: string }[] = [
+  { key: 'left', label: 'Left Wing', image: 'left-wing.jpg' },
+  { key: 'right', label: 'Right Wing', image: 'right-wing.jpg' },
+  { key: 'sensor', label: 'Sensor Overlay', image: 'sensor-overlay.jpg' },
+];
+
 const TowDetailDrawer: React.FC<Props> = ({ log, onClose }) => {
+  const [camera, setCamera] = useState<CameraView>('left');
+
   if (!log) return null;
 
   const eventCount = log.details?.events || 0;
   const trajectory = getTrajectory(log.details?.path);
+  const activeView = CAMERA_VIEWS.find((v) => v.key === camera) ?? CAMERA_VIEWS[0];
 
   return (
     <>
@@ -45,9 +56,10 @@ const TowDetailDrawer: React.FC<Props> = ({ log, onClose }) => {
           <div className="relative aspect-video bg-[#161B22] rounded-xl overflow-hidden mb-6 border border-gray-800 shadow-inner">
             <div className="absolute inset-0 flex items-center justify-center">
               <img
-                src={`${import.meta.env.BASE_URL}mission-footage.jpg`}
+                key={activeView.key}
+                src={`${import.meta.env.BASE_URL}${activeView.image}`}
                 className="w-full h-full object-cover opacity-90"
-                alt="Mission footage"
+                alt={`${activeView.label} view`}
               />
               <div className="absolute inset-0 bg-black/30" />
               <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all cursor-pointer group">
@@ -87,15 +99,19 @@ const TowDetailDrawer: React.FC<Props> = ({ log, onClose }) => {
 
           {/* Camera Controls - Updated Labels and Styling */}
           <div className="flex space-x-2 mb-6">
-            <button className="flex-1 py-2.5 bg-[#1E3A8A]/30 text-blue-300 text-[10px] font-black uppercase tracking-[0.15em] rounded-md border border-blue-500/40 shadow-[inset_0_0_10px_rgba(59,130,246,0.1)]">
-              LEFT WING
-            </button>
-            <button className="flex-1 py-2.5 bg-gray-900/40 text-gray-500 text-[10px] font-black uppercase tracking-[0.15em] rounded-md border border-gray-800 hover:text-gray-300 hover:border-gray-700 transition-colors">
-              RIGHT WING
-            </button>
-            <button className="flex-1 py-2.5 bg-gray-900/40 text-gray-500 text-[10px] font-black uppercase tracking-[0.15em] rounded-md border border-gray-800 hover:text-gray-300 hover:border-gray-700 transition-colors">
-              SENSOR OVERLAY
-            </button>
+            {CAMERA_VIEWS.map((view) => (
+              <button
+                key={view.key}
+                onClick={() => setCamera(view.key)}
+                className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-[0.15em] rounded-md border transition-colors ${
+                  camera === view.key
+                    ? 'bg-[#1E3A8A]/30 text-blue-300 border-blue-500/40 shadow-[inset_0_0_10px_rgba(59,130,246,0.1)]'
+                    : 'bg-gray-900/40 text-gray-500 border-gray-800 hover:text-gray-300 hover:border-gray-700'
+                }`}
+              >
+                {view.label}
+              </button>
+            ))}
           </div>
 
           {/* Map Section — facility map with this mission's GPS trajectory */}
