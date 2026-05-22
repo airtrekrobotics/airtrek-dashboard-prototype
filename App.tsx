@@ -70,7 +70,7 @@ const App: React.FC = () => {
               />
               <MetricCard 
                 label="Total Tows (30D)" 
-                value="1438" 
+                value="538" 
                 subValue="5%" 
                 trend="up" 
               />

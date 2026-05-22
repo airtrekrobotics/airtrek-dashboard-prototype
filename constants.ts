@@ -76,3 +76,47 @@ export const MOCK_LOGS: TowLog[] = [
     details: { distance: '310 ft', maxSpeed: '1.7 mph', events: 0, batteryEnd: '91%', path: 'Ramp -> Hangar 3' }
   },
 ];
+
+export interface MapPoint {
+  x: number;
+  y: number;
+}
+
+// Positions on public/facility-map.jpg, as percentages (x = left%, y = top%).
+// Each hangar point is its north-facing door; aircraft stay north of the
+// hangars, so trajectories travel along a lane north of these doors.
+const HANGAR_ZONES: Record<string, MapPoint> = {
+  'Hangar 1': { x: 14, y: 52 },
+  'Hangar 2': { x: 35, y: 52 },
+  'Hangar 3': { x: 56, y: 57 },
+  'Hangar 4': { x: 70, y: 57 },
+  'Hangar 5': { x: 85, y: 57 },
+};
+
+const TRAVEL_LANE_Y = 45; // east-west lane, north of every hangar door
+const RAMP_APRON_Y = 22; // open apron, further north
+
+// "Ramp" isn't a fixed point — it resolves to the open apron directly north of
+// its partner hangar, so each route reads as pulling straight out / in.
+const resolveZone = (name: string, partner: string): MapPoint => {
+  const zone = HANGAR_ZONES[name];
+  if (zone) return zone;
+  const partnerZone = HANGAR_ZONES[partner];
+  return { x: partnerZone ? partnerZone.x : 50, y: RAMP_APRON_Y };
+};
+
+// Build the GPS trajectory for a route string like "Hangar 1 -> Ramp".
+// Path: out of the start, north to the travel lane, across, into the end.
+export const getTrajectory = (path?: string): MapPoint[] => {
+  if (!path) return [];
+  const [from, to] = path.split('->').map((s) => s.trim());
+  if (!from || !to) return [];
+  const start = resolveZone(from, to);
+  const end = resolveZone(to, from);
+  return [
+    start,
+    { x: start.x, y: TRAVEL_LANE_Y },
+    { x: end.x, y: TRAVEL_LANE_Y },
+    end,
+  ];
+};

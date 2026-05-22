@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { TowLog } from '../types';
+import { getTrajectory } from '../constants';
 
 interface Props {
   log: TowLog | null;
@@ -11,6 +12,7 @@ const TowDetailDrawer: React.FC<Props> = ({ log, onClose }) => {
   if (!log) return null;
 
   const eventCount = log.details?.events || 0;
+  const trajectory = getTrajectory(log.details?.path);
 
   return (
     <>
@@ -96,46 +98,50 @@ const TowDetailDrawer: React.FC<Props> = ({ log, onClose }) => {
             </button>
           </div>
 
-          {/* Map Section */}
-          <div className="h-64 md:h-80 bg-[#1A1D23] rounded-xl border border-gray-800 relative overflow-hidden mb-10 shadow-2xl">
-            <div className="absolute inset-0">
-              <svg className="w-full h-full bg-[#2C2F33]" viewBox="0 0 500 400" preserveAspectRatio="xMidYMid slice">
-                <rect x="0" y="0" width="500" height="400" fill="#2C2F33" />
-                <path d="M0,100 L250,100 L250,400 L0,400 Z" fill="#40444B" />
-                <path d="M250,300 L500,300 L500,400 L250,400 Z" fill="#40444B" />
-                <rect x="0" y="240" width="500" height="60" fill="#40444B" />
-                <rect x="300" y="0" width="100" height="80" fill="#0B0E14" />
-                <path d="M280,140 L380,140 L380,300 L300,300 L300,320 L280,320 Z" fill="#0B0E14" />
-                <rect x="420" y="100" width="80" height="150" fill="#0B0E14" />
-                <line x1="150" y1="0" x2="150" y2="400" stroke="#373B41" strokeWidth="1" />
-                <line x1="0" y1="200" x2="500" y2="200" stroke="#373B41" strokeWidth="1" />
-                <path 
-                  d="M400,200 L380,200 L380,260 L180,260 L180,180" 
-                  fill="none" 
-                  stroke="#00D1FF" 
-                  strokeWidth="4" 
-                  strokeLinecap="round" 
+          {/* Map Section — facility map with this mission's GPS trajectory */}
+          <div className="relative w-full aspect-[1672/941] bg-[#1A1D23] rounded-xl border border-gray-800 overflow-hidden mb-10 shadow-2xl">
+            <img
+              src={`${import.meta.env.BASE_URL}facility-map.jpg`}
+              alt="Facility map"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+
+            {/* Trajectory line (coords are % of the map) */}
+            {trajectory.length > 1 && (
+              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <polyline
+                  points={trajectory.map((p) => `${p.x},${p.y}`).join(' ')}
+                  fill="none"
+                  stroke="#00D1FF"
+                  strokeWidth={3}
+                  strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="drop-shadow-[0_0_8px_#00D1FF]"
+                  vectorEffect="non-scaling-stroke"
+                  className="drop-shadow-[0_0_6px_#00D1FF]"
                 />
-                <g transform="translate(180,180)">
-                  <line x1="0" y1="0" x2="0" y2="-30" stroke="#00D1FF" strokeWidth="2" strokeDasharray="4" />
-                  <g transform="rotate(0)">
-                    <circle cx="0" cy="0" r="18" fill="#007BFF" fillOpacity="0.2" className="animate-pulse" />
-                    <circle cx="0" cy="0" r="12" fill="#007BFF" />
-                    <path d="M0,-8 L2,0 L8,2 L2,2 L0,8 L-2,2 L-8,2 L-2,0 Z" fill="white" />
-                    <circle cx="0" cy="0" r="22" stroke="#00D1FF" strokeWidth="1" fill="none" opacity="0.3">
-                      <animate attributeName="r" from="15" to="35" dur="2s" repeatCount="indefinite" />
-                      <animate attributeName="opacity" from="0.5" to="0" dur="2s" repeatCount="indefinite" />
-                    </circle>
-                  </g>
-                  <g transform="translate(0, -35)">
-                    <rect x="-6" y="-8" width="12" height="16" rx="2" fill="#00D1FF" />
-                    <rect x="-2" y="-4" width="4" height="8" fill="#0B0E14" />
-                  </g>
-                </g>
               </svg>
-            </div>
+            )}
+
+            {/* Origin dot + robot marker (HTML so they stay perfectly round) */}
+            {trajectory.length > 1 && (
+              <>
+                <div
+                  className="absolute w-2 h-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#00D1FF]/70 border border-white/50"
+                  style={{ left: `${trajectory[0].x}%`, top: `${trajectory[0].y}%` }}
+                />
+                <div
+                  className="absolute -translate-x-1/2 -translate-y-1/2"
+                  style={{ left: `${trajectory[trajectory.length - 1].x}%`, top: `${trajectory[trajectory.length - 1].y}%` }}
+                >
+                  <span className="absolute left-1/2 top-1/2 w-9 h-9 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#007BFF]/30 animate-ping" />
+                  <span className="relative block w-5 h-5 rounded-full bg-[#007BFF] border-2 border-[#00D1FF] shadow-[0_0_10px_#00D1FF] flex items-center justify-center">
+                    <i className="fas fa-location-arrow text-white text-[8px]"></i>
+                  </span>
+                </div>
+              </>
+            )}
+
+            {/* Labels */}
             <div className="absolute top-4 left-4 flex flex-col space-y-2 pointer-events-none">
               <div className="flex items-center space-x-2 bg-black/40 backdrop-blur-md px-2 py-1 rounded border border-white/10">
                 <div className="w-2 h-2 rounded-full bg-[#00D1FF]"></div>
@@ -145,6 +151,11 @@ const TowDetailDrawer: React.FC<Props> = ({ log, onClose }) => {
                 <div className="w-2 h-2 rounded-full bg-[#007BFF]"></div>
                 <span className="text-[9px] font-black text-white uppercase tracking-widest">{log.tailNumber} Pos</span>
               </div>
+            </div>
+
+            {/* Route caption */}
+            <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-md px-3 py-1 rounded border border-white/10 pointer-events-none">
+              <span className="text-[9px] font-bold text-[#00D1FF] uppercase tracking-widest mono">{log.details?.path}</span>
             </div>
           </div>
 
