@@ -11,16 +11,12 @@ const Sidebar: React.FC = () => {
 
   return (
     <div className="w-64 bg-[#0B0E14] border-r border-gray-800 flex flex-col h-full hidden lg:flex">
-      <div className="p-8 flex items-center space-x-3">
+      <div className="p-6">
         <img
           src={`${import.meta.env.BASE_URL}logo.png`}
           alt="Airtrek Robotics"
-          className="w-8 h-10 object-contain shrink-0"
+          className="w-full h-auto object-contain"
         />
-        <div>
-          <h1 className="text-white font-black leading-none tracking-tight text-lg">AIRTREK</h1>
-          <h2 className="text-white font-bold text-xs tracking-[0.2em] leading-none">ROBOTICS</h2>
-        </div>
       </div>
       
       <nav className="flex-1 mt-6 px-4 space-y-1">

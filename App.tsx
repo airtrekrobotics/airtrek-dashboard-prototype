@@ -30,15 +30,12 @@ const App: React.FC = () => {
         
         {/* Top Header Bar */}
         <header className="h-16 border-b border-gray-800/40 flex items-center justify-between px-10 bg-[#0B0E14]/80 backdrop-blur-md sticky top-0 z-10">
-          <div className="flex items-center space-x-4 lg:hidden">
+          <div className="flex items-center lg:hidden">
             <img
               src={`${import.meta.env.BASE_URL}logo.png`}
               alt="Airtrek Robotics"
-              className="w-6 h-8 object-contain"
+              className="h-8 w-auto object-contain"
             />
-            <span className="text-white text-xs font-black uppercase tracking-wider">
-              Airtrek Robotics
-            </span>
           </div>
           
           <div className="hidden lg:flex items-center space-x-2 text-gray-500">
