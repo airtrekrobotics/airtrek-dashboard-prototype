@@ -6,7 +6,7 @@ import LogsTable from './components/LogsTable';
 import AIChat from './components/AIChat';
 import TowDetailDrawer from './components/TowDetailDrawer';
 import TowTrendChart from './components/TowTrendChart';
-import { MOCK_LOGS } from './constants';
+import { MOCK_LOGS, DASHBOARD_METRICS } from './constants';
 import { TowLog } from './types';
 
 const App: React.FC = () => {
@@ -67,17 +67,17 @@ const App: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <MetricCard 
                 label="Total Tows (MTD)" 
-                value="186" 
+                value={String(DASHBOARD_METRICS.mtd)}
               />
               <MetricCard 
                 label="Total Tows (30D)" 
-                value="538" 
+                value={String(DASHBOARD_METRICS.last30)}
                 subValue="5%" 
                 trend="up" 
               />
               <MetricCard
                 label="Avg. Tow Time"
-                value="17m 45s"
+                value={DASHBOARD_METRICS.avgTowTime}
                 accent={true}
               />
             </div>

@@ -10,6 +10,7 @@ export interface TowLog {
     distance: string;
     maxSpeed: string;
     events: number;
+    eventTimes?: string[];
     batteryEnd: string;
     path: string;
   };

@@ -9,9 +9,9 @@ interface Props {
 
 const LogsTable: React.FC<Props> = ({ logs, onRowClick }) => {
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-800/50 bg-[#1C2128]/40 shadow-2xl">
+    <div className="overflow-auto max-h-[600px] rounded-xl border border-gray-800/50 bg-[#1C2128]/40 shadow-2xl">
       <table className="w-full text-left">
-        <thead className="bg-[#1C2128]">
+        <thead className="bg-[#1C2128] sticky top-0 z-10">
           <tr className="text-gray-500 text-[11px] font-bold uppercase tracking-[0.1em]">
             <th className="px-8 py-5">Date/Time</th>
             <th className="px-8 py-5">Tail Number</th>

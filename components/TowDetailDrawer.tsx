@@ -75,14 +75,21 @@ const TowDetailDrawer: React.FC<Props> = ({ log, onClose }) => {
                    {/* Background progress */}
                    <div className="h-full bg-white/40 w-[62%] rounded-full"></div>
                    
-                   {/* Event Markers (Linked to log.details.events) */}
-                   {Array.from({ length: eventCount }).map((_, idx) => (
-                      <div 
-                        key={idx}
-                        className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-yellow-400 rounded-sm transform rotate-45 shadow-[0_0_8px_rgba(250,204,21,0.6)] z-10"
-                        style={{ left: `${20 + (idx * (40 / Math.max(1, eventCount)))}%` }}
-                      ></div>
-                   ))}
+                   {/* Event markers positioned by their timestamp within the mission */}
+                   {(log.details?.eventTimes ?? []).map((t, idx) => {
+                      const [mm, ss] = t.split(':').map(Number);
+                      const offset = (mm || 0) * 60 + (ss || 0);
+                      const durSec = (parseInt(log.duration, 10) || 0) * 60;
+                      const left = durSec ? Math.min(96, (offset / durSec) * 100) : 0;
+                      return (
+                        <div
+                          key={idx}
+                          title={`Event at ${t}`}
+                          className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-yellow-400 rounded-sm transform rotate-45 shadow-[0_0_8px_rgba(250,204,21,0.6)] z-10"
+                          style={{ left: `${left}%` }}
+                        ></div>
+                      );
+                   })}
                 </div>
                 <div className="flex space-x-3 text-white text-[10px] mono">
                   <i className="fas fa-volume-up opacity-70"></i>

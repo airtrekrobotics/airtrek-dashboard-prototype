@@ -52,6 +52,7 @@ const TowTrendChart: React.FC = () => {
     mode === '30d' ? `${data[i]} tows` : `${data[i].toFixed(1)} tows/hr`;
   const fmtGrid = (v: number) => (mode === '30d' ? Math.round(v).toString() : v.toFixed(1));
   const ticks = mode === '30d' ? [0, 7, 14, 21, 29] : [0, 6, 12, 18, 23];
+  const total30 = DAILY_30D.reduce((a, b) => a + b, 0);
 
   const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -69,7 +70,7 @@ const TowTrendChart: React.FC = () => {
           </h3>
           <p className="text-gray-500 text-[11px] mt-1">
             {mode === '30d'
-              ? 'Daily tow counts · 538 total'
+              ? `Daily tow counts · ${total30} total`
               : 'Avg tows per hour · 30-day average'}
           </p>
         </div>
