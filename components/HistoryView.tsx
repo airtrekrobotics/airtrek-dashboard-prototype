@@ -30,17 +30,34 @@ const HistoryView: React.FC<Props> = ({ logs, onRowClick }) => {
   const [query, setQuery] = useState('');
   const [operator, setOperator] = useState('All');
   const [eventsOnly, setEventsOnly] = useState(false);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+
+  // Earliest/latest dates in the data, to bound the calendar pickers.
+  const bounds = useMemo(() => {
+    let min = logs[0]?.dateTime.slice(0, 10) ?? '';
+    let max = min;
+    for (const l of logs) {
+      const d = l.dateTime.slice(0, 10);
+      if (d < min) min = d;
+      if (d > max) max = d;
+    }
+    return { min, max };
+  }, [logs]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return logs.filter((l) => {
       if (operator !== 'All' && l.operator !== operator) return false;
       if (eventsOnly && !(l.details?.events)) return false;
+      const date = l.dateTime.slice(0, 10);
+      if (fromDate && date < fromDate) return false;
+      if (toDate && date > toDate) return false;
       if (!needle) return true;
       const hay = `${l.dateTime} ${l.tailNumber} ${l.operator} ${l.details?.path ?? ''}`.toLowerCase();
       return hay.includes(needle);
     });
-  }, [logs, query, operator, eventsOnly]);
+  }, [logs, query, operator, eventsOnly, fromDate, toDate]);
 
   const exportCsv = () => {
     const blob = new Blob([toCsv(filtered)], { type: 'text/csv;charset=utf-8;' });
@@ -80,6 +97,39 @@ const HistoryView: React.FC<Props> = ({ logs, onRowClick }) => {
               <option key={o}>{o}</option>
             ))}
           </select>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              aria-label="From date"
+              value={fromDate}
+              min={bounds.min}
+              max={toDate || bounds.max}
+              onChange={(e) => setFromDate(e.target.value)}
+              className={`${inputCls} [color-scheme:dark]`}
+            />
+            <span className="text-gray-600 text-xs">to</span>
+            <input
+              type="date"
+              aria-label="To date"
+              value={toDate}
+              min={fromDate || bounds.min}
+              max={bounds.max}
+              onChange={(e) => setToDate(e.target.value)}
+              className={`${inputCls} [color-scheme:dark]`}
+            />
+            {(fromDate || toDate) && (
+              <button
+                onClick={() => {
+                  setFromDate('');
+                  setToDate('');
+                }}
+                className="text-gray-500 hover:text-gray-300 text-xs px-1"
+                aria-label="Clear dates"
+              >
+                <i className="fas fa-xmark"></i>
+              </button>
+            )}
+          </div>
           <button
             onClick={() => setEventsOnly((v) => !v)}
             className={`px-4 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest border transition-colors ${
