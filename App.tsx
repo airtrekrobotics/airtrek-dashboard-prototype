@@ -1,15 +1,17 @@
 
 import React, { useState } from 'react';
-import Sidebar from './components/Sidebar';
+import Sidebar, { View } from './components/Sidebar';
 import MetricCard from './components/MetricCard';
 import LogsTable from './components/LogsTable';
 import AIChat from './components/AIChat';
 import TowDetailDrawer from './components/TowDetailDrawer';
 import TowTrendChart from './components/TowTrendChart';
-import { MOCK_LOGS, DASHBOARD_METRICS } from './constants';
+import HistoryView from './components/HistoryView';
+import { MOCK_LOGS, DASHBOARD_METRICS, LAST_30_DAYS_LOGS } from './constants';
 import { TowLog } from './types';
 
 const App: React.FC = () => {
+  const [view, setView] = useState<View>('dashboard');
   const [logs] = useState(MOCK_LOGS);
   const [selectedTow, setSelectedTow] = useState<TowLog | null>(null);
 
@@ -24,7 +26,7 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen overflow-hidden bg-[#0B0E14] text-[#E2E8F0]">
       {/* Sidebar Navigation */}
-      <Sidebar />
+      <Sidebar view={view} onNavigate={setView} />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-y-auto">
@@ -56,7 +58,8 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* Dashboard Content */}
+        {/* Main content switches by sidebar view */}
+        {view === 'dashboard' && (
         <main className="p-10 max-w-[1400px] w-full">
           
           <section className="mb-12">
@@ -86,16 +89,11 @@ const App: React.FC = () => {
           </section>
 
           <section className="mb-12">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center space-x-3 flex-1">
-                <h2 className="text-xl font-bold text-white tracking-tight mono uppercase text-sm">Historical Logs</h2>
-                <div className="h-px flex-1 bg-gray-800/50 mr-6"></div>
-              </div>
-              <button className="bg-gray-800/40 text-[10px] font-bold px-5 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-all border border-gray-800 uppercase tracking-widest shrink-0">
-                  <i className="fas fa-file-export mr-2"></i> Export Data
-              </button>
+            <div className="flex items-center space-x-3 mb-8">
+              <h2 className="text-xl font-bold text-white tracking-tight mono uppercase text-sm">Last 30 Days</h2>
+              <div className="h-px flex-1 bg-gray-800/50"></div>
             </div>
-            <LogsTable logs={logs} onRowClick={handleRowClick} />
+            <LogsTable logs={LAST_30_DAYS_LOGS} onRowClick={handleRowClick} />
           </section>
 
           {/* System Announcement Footer Area */}
@@ -115,6 +113,20 @@ const App: React.FC = () => {
           </footer>
 
         </main>
+        )}
+
+        {view === 'history' && <HistoryView logs={logs} onRowClick={handleRowClick} />}
+
+        {(view === 'fleet' || view === 'settings') && (
+          <main className="flex-1 flex items-center justify-center p-10">
+            <div className="text-center">
+              <i className="fas fa-screwdriver-wrench text-gray-700 text-4xl mb-4"></i>
+              <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">
+                {view === 'fleet' ? 'Robot Fleet' : 'Settings'} — Coming Soon
+              </p>
+            </div>
+          </main>
+        )}
       </div>
 
       {/* Detail Popup Drawer */}

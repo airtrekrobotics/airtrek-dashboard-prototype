@@ -219,3 +219,8 @@ const computeMetrics = (logs: TowLog[]) => {
 };
 
 export const DASHBOARD_METRICS = computeMetrics(MOCK_LOGS);
+
+// The most-recent-30-days subset (Apr 26 – May 25), shown on the dashboard.
+export const LAST_30_DAYS_LOGS: TowLog[] = MOCK_LOGS.filter(
+  (l) => new Date(l.dateTime.replace(' ', 'T')).getTime() >= TODAY.getTime() - 29 * MS_DAY,
+);

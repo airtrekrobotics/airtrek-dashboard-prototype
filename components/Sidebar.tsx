@@ -1,13 +1,21 @@
 
 import React from 'react';
 
-const Sidebar: React.FC = () => {
-  const navItems = [
-    { icon: 'fa-chart-pie', label: 'Dashboard', active: true },
-    { icon: 'fa-robot', label: 'Robot Fleet', active: false },
-    { icon: 'fa-history', label: 'History', active: false },
-    { icon: 'fa-cog', label: 'Settings', active: false },
-  ];
+export type View = 'dashboard' | 'fleet' | 'history' | 'settings';
+
+interface Props {
+  view: View;
+  onNavigate: (view: View) => void;
+}
+
+const NAV_ITEMS: { icon: string; label: string; key: View }[] = [
+  { icon: 'fa-chart-pie', label: 'Dashboard', key: 'dashboard' },
+  { icon: 'fa-robot', label: 'Robot Fleet', key: 'fleet' },
+  { icon: 'fa-history', label: 'History', key: 'history' },
+  { icon: 'fa-cog', label: 'Settings', key: 'settings' },
+];
+
+const Sidebar: React.FC<Props> = ({ view, onNavigate }) => {
 
   return (
     <div className="w-64 bg-[#0B0E14] border-r border-gray-800 flex flex-col h-full hidden lg:flex">
@@ -20,12 +28,13 @@ const Sidebar: React.FC = () => {
       </div>
       
       <nav className="flex-1 mt-6 px-4 space-y-1">
-        {navItems.map((item) => (
+        {NAV_ITEMS.map((item) => (
           <button
-            key={item.label}
+            key={item.key}
+            onClick={() => onNavigate(item.key)}
             className={`w-full flex items-center space-x-4 px-4 py-3 rounded-lg transition-all ${
-              item.active 
-                ? 'bg-gray-800/40 text-white' 
+              view === item.key
+                ? 'bg-gray-800/40 text-white'
                 : 'text-gray-500 hover:bg-gray-800/20 hover:text-gray-300'
             }`}
           >
