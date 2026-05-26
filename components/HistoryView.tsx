@@ -51,7 +51,7 @@ const HistoryView: React.FC<Props> = ({ logs, onRowClick }) => {
       if (fromDate && date < fromDate) return false;
       if (toDate && date > toDate) return false;
       if (!needle) return true;
-      const hay = `${l.dateTime} ${l.tailNumber} ${l.operator} ${l.details?.path ?? ''}`.toLowerCase();
+      const hay = `${l.dateTime} ${l.tailNumber} ${l.operator} ${l.tug} ${l.details?.path ?? ''}`.toLowerCase();
       return hay.includes(needle);
     });
   }, [logs, query, operator, eventsOnly, fromDate, toDate]);
