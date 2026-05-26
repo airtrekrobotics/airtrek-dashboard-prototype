@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { TowLog } from '../types';
+import { downloadLogPackage } from '../services/logDownload';
 
 interface Props {
   logs: TowLog[];
@@ -20,6 +21,7 @@ const LogsTable: React.FC<Props> = ({ logs, onRowClick, flaggedIds }) => {
             <th className="px-8 py-5">Operator</th>
             <th className="px-8 py-5">Tug</th>
             <th className="px-8 py-5">Events</th>
+            <th className="px-8 py-5 text-right">Download</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-800/30">
@@ -48,6 +50,20 @@ const LogsTable: React.FC<Props> = ({ logs, onRowClick, flaggedIds }) => {
                 ) : (
                   <span className="text-gray-600">—</span>
                 )}
+              </td>
+              <td className="px-8 py-5">
+                <div className="flex justify-end">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      downloadLogPackage(log);
+                    }}
+                    className="bg-gray-800/60 hover:bg-gray-700 text-gray-300 hover:text-white px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-[0.1em] transition-colors border border-gray-700 hover:border-gray-500"
+                  >
+                    <i className="fas fa-download mr-1.5 opacity-70"></i>
+                    Download
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

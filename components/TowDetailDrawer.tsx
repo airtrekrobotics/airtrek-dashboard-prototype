@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { TowLog } from '../types';
 import { getTrajectory } from '../constants';
+import { downloadLogPackage } from '../services/logDownload';
 
 interface Props {
   log: TowLog | null;
@@ -45,6 +46,13 @@ const TowDetailDrawer: React.FC<Props> = ({ log, onClose, isFlagged, onToggleFla
               Tow Detail - <span className="text-[#FF4D00]">{log.tailNumber}</span>
             </h2>
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => downloadLogPackage(log)}
+                className="px-4 py-1.5 border border-gray-600 text-gray-300 text-xs font-bold uppercase tracking-widest rounded hover:bg-gray-800 hover:text-white transition-colors"
+              >
+                <i className="fas fa-download mr-2"></i>
+                Download
+              </button>
               <button
                 onClick={() => onToggleFlag(log.id)}
                 className={`px-4 py-1.5 text-xs font-bold uppercase tracking-widest rounded transition-colors ${
