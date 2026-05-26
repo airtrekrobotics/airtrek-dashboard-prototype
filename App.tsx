@@ -102,6 +102,8 @@ const App: React.FC = () => {
               <MetricCard
                 label="Avg. Tow Time (30D)"
                 value={DASHBOARD_METRICS.avgTowTime}
+                subValue="1.2%"
+                trend="down"
                 accent={true}
               />
               <div className="bg-[#1C2128] border border-gray-800/50 p-6 rounded-xl flex flex-col justify-between shadow-xl min-h-[160px]">

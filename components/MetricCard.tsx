@@ -11,8 +11,9 @@ const MetricCard: React.FC<Metric> = ({ label, value, subValue, trend, accent })
           {value}
         </span>
         {subValue && (
-          <div className="flex items-center space-x-1 text-[#00D100] pb-2">
+          <div className={`flex items-center space-x-1 pb-2 ${trend === 'down' ? 'text-[#EF4444]' : 'text-[#00D100]'}`}>
             {trend === 'up' && <i className="fas fa-arrow-up text-xs"></i>}
+            {trend === 'down' && <i className="fas fa-arrow-down text-xs"></i>}
             <span className="text-base font-bold mono">{subValue}</span>
           </div>
         )}
