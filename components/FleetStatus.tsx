@@ -18,6 +18,13 @@ const TUG_IMAGES: Record<string, string> = {
   Towflexx: 'towflexx.png',
 };
 
+const TUG_LOCATIONS: Record<string, string> = {
+  Lektro: 'Hangar 3',
+  Mototok: 'Hangar 3',
+  Harlan: 'Hangar 1',
+  Towflexx: 'Hangar 3',
+};
+
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="flex items-center justify-between">
     <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#4F5B6B]">{label}</span>
@@ -52,7 +59,7 @@ const FleetStatus: React.FC<Props> = ({ logs }) => {
               <img
                 src={`${base}robot.png`}
                 alt="Wingwalking robot"
-                className="w-28 h-28 object-contain shrink-0"
+                className="w-[140px] h-[140px] object-contain shrink-0"
               />
               <div className="flex-1 min-w-0">
                 <h3 className="text-white font-bold mono uppercase tracking-tight mb-5">{r.name}</h3>
@@ -85,28 +92,31 @@ const FleetStatus: React.FC<Props> = ({ logs }) => {
           <div className="h-px flex-1 bg-gray-800/50"></div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {TUGS.map((name) => (
-            <div key={name} className="bg-[#161B22]/60 border border-gray-800/60 rounded-2xl p-6">
-              <div className="h-28 flex items-center justify-center mb-4">
-                <img
-                  src={`${base}${TUG_IMAGES[name]}`}
-                  alt={name}
-                  className="max-h-28 max-w-full object-contain"
-                />
+          {TUGS.map((name) => {
+            const big = name === 'Harlan'; // shown 25% larger
+            return (
+              <div key={name} className="bg-[#161B22]/60 border border-gray-800/60 rounded-2xl p-6">
+                <div className={`${big ? 'h-[140px]' : 'h-28'} flex items-center justify-center mb-4`}>
+                  <img
+                    src={`${base}${TUG_IMAGES[name]}`}
+                    alt={name}
+                    className={`${big ? 'max-h-[140px]' : 'max-h-28'} max-w-full object-contain`}
+                  />
+                </div>
+                <h3 className="text-white font-bold mono uppercase tracking-tight mb-4">{name}</h3>
+                <div className="space-y-3">
+                  <Row label="Number of Tows">
+                    <span className="text-white mono text-sm font-bold">
+                      {(tugCounts[name] || 0).toLocaleString()}
+                    </span>
+                  </Row>
+                  <Row label="Location">
+                    <span className="text-gray-300 text-sm font-bold">{TUG_LOCATIONS[name]}</span>
+                  </Row>
+                </div>
               </div>
-              <h3 className="text-white font-bold mono uppercase tracking-tight mb-4">{name}</h3>
-              <div className="space-y-3">
-                <Row label="Number of Tows">
-                  <span className="text-white mono text-sm font-bold">
-                    {(tugCounts[name] || 0).toLocaleString()}
-                  </span>
-                </Row>
-                <Row label="Condition">
-                  <span className="text-gray-600 text-sm">—</span>
-                </Row>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
     </main>
