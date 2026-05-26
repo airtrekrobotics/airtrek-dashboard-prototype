@@ -12,17 +12,31 @@ interface Props {
 const OPERATORS = ['Chris Lee', 'Huzefa Dossaji', 'Jon Taylor', 'David Ladnier'];
 
 const HEADERS = [
-  'ID', 'Flagged', 'Date / Time', 'Tail Number', 'Operator', 'Tug', 'Duration', 'Status',
-  'Route', 'Distance', 'Max Speed', 'Events', 'Event Times', 'Battery (End)',
+  'ID', 'Flagged', 'Date / Time', 'Tail Number', 'Operator', 'Tug', 'Duration (min)', 'Status',
+  'Route From', 'Route To', 'Distance (ft)', 'Max Speed (mph)', 'Events', 'Event Times', 'Battery (%)',
 ];
 
 const toRows = (logs: TowLog[], flaggedIds: Set<string>): string[][] =>
-  logs.map((l) => [
-    l.id, flaggedIds.has(l.id) ? 'Yes' : 'No', l.dateTime, l.tailNumber, l.operator, l.tug, l.duration, l.status,
-    l.details?.path ?? '', l.details?.distance ?? '', l.details?.maxSpeed ?? '',
-    String(l.details?.events ?? 0), (l.details?.eventTimes ?? []).join(' '),
-    l.details?.batteryEnd ?? '',
-  ]);
+  logs.map((l) => {
+    const [routeFrom = '', routeTo = ''] = (l.details?.path ?? '').split('->').map((s) => s.trim());
+    return [
+      l.id,
+      flaggedIds.has(l.id) ? 'Yes' : 'No',
+      l.dateTime,
+      l.tailNumber,
+      l.operator,
+      l.tug,
+      String(parseInt(l.duration, 10) || 0),
+      l.status,
+      routeFrom,
+      routeTo,
+      String(parseInt(l.details?.distance ?? '0', 10) || 0),
+      String(parseFloat(l.details?.maxSpeed ?? '0') || 0),
+      String(l.details?.events ?? 0),
+      (l.details?.eventTimes ?? []).join(' '),
+      String(parseInt(l.details?.batteryEnd ?? '0', 10) || 0),
+    ];
+  });
 
 const HistoryView: React.FC<Props> = ({ logs, onRowClick, flaggedIds }) => {
   const [query, setQuery] = useState('');

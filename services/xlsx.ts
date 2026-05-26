@@ -69,6 +69,9 @@ const buildZip = (files: { name: string; content: string }[]): Uint8Array => {
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+// Pure numeric strings become real number cells; everything else is text.
+const isNum = (v: string) => v !== '' && /^-?\d+(\.\d+)?$/.test(v);
+
 const colRef = (i: number): string => {
   let s = '';
   let n = i + 1;
@@ -84,10 +87,13 @@ export const downloadXlsx = (filename: string, headers: string[], rows: string[]
   const sheetData = [headers, ...rows]
     .map((row, r) => {
       const cells = row
-        .map(
-          (v, c) =>
-            `<c r="${colRef(c)}${r + 1}" t="inlineStr"><is><t xml:space="preserve">${esc(v ?? '')}</t></is></c>`,
-        )
+        .map((v, c) => {
+          const ref = `${colRef(c)}${r + 1}`;
+          const val = v ?? '';
+          return isNum(val)
+            ? `<c r="${ref}"><v>${val}</v></c>`
+            : `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${esc(val)}</t></is></c>`;
+        })
         .join('');
       return `<row r="${r + 1}">${cells}</row>`;
     })
