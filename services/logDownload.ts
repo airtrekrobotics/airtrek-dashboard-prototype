@@ -63,10 +63,10 @@ const buildZip = (files: { name: string; data: Uint8Array }[]): Uint8Array => {
 
 // Build and download a per-mission package: a PDF report + three (empty,
 // placeholder) sensor video files, zipped together.
-export const downloadLogPackage = (log: TowLog) => {
+export const downloadLogPackage = async (log: TowLog) => {
   const slug = `${log.tailNumber}-${log.dateTime.replace(/[: ]/g, '-')}`;
   const files = [
-    { name: `mission-report-${log.tailNumber}.pdf`, data: buildLogPdf(log) },
+    { name: `mission-report-${log.tailNumber}.pdf`, data: await buildLogPdf(log) },
     { name: 'LEFT WING.mp4', data: new Uint8Array(0) },
     { name: 'RIGHT WING.mp4', data: new Uint8Array(0) },
     { name: 'SENSOR OVERLAY.mp4', data: new Uint8Array(0) },
