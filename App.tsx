@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import Sidebar, { View } from './components/Sidebar';
 import MetricCard from './components/MetricCard';
 import LogsTable from './components/LogsTable';
-import AIChat from './components/AIChat';
 import TowDetailDrawer from './components/TowDetailDrawer';
 import TowTrendChart from './components/TowTrendChart';
 import HistoryView from './components/HistoryView';
@@ -134,9 +133,6 @@ const App: React.FC = () => {
 
       {/* Detail Popup Drawer */}
       <TowDetailDrawer log={selectedTow} onClose={closeDrawer} />
-
-      {/* AI Assistant Chatbot Overlay */}
-      <AIChat logs={logs} />
     </div>
   );
 };

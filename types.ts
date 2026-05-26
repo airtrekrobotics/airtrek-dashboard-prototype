@@ -24,9 +24,3 @@ export interface Metric {
   trend?: 'up' | 'down';
   accent?: boolean;
 }
-
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
