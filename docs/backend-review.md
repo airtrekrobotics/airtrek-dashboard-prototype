@@ -1,11 +1,11 @@
 # Backend Design Review
 
-> **Status — historical (2026-06-16).** This review audited **schema v0.1**.
-> All **critical** and **important** items below have been addressed in
-> **schema v0.2** ([backend.md](backend.md), [sample/](sample/)). The
-> document is retained as the record of how the v0.2 schema arrived at its
-> current shape; the open architectural questions in `backend.md` §5
-> remain outstanding.
+> **Status — historical.** This review audited **schema v0.1**.
+> All **critical** and **important** items below were addressed in v0.2,
+> and the current schema is **v0.3** (1:1 bag↔mission + classifier;
+> see [backend.md](backend.md), [sample/](sample/)). The document is
+> retained as the record of how the schema arrived at its current shape;
+> the open architectural questions in `backend.md` §5 remain outstanding.
 
 Pre-implementation audit of [backend.md](backend.md) + [sample/](sample/),
 intended for the engineering committee. Findings were verified against the

@@ -1,9 +1,9 @@
-# Sample SQLite Database (schema v0.2)
+# Sample SQLite Database (schema v0.3)
 
-A tiny working version of the [backend schema](../backend.md) — eleven tables
-seeded with a handful of missions, tugs, robots, operators, events, media
-pointers, and pipeline-state rows — so you can poke at it and see how the
-dashboard's metrics map to real SQL.
+A tiny working version of the [backend schema](../backend.md) — ten tables
+seeded with a handful of real missions plus a couple of dummy bags, so you
+can poke at it and see how the dashboard's metrics map to real SQL and how
+the post-processing pipeline classifies what it sees.
 
 The same schema runs on **Cloudflare D1** unchanged (D1 *is* SQLite). When the
 real backend lands, you'll point D1 at this same DDL.
@@ -14,7 +14,7 @@ real backend lands, you'll point D1 at this same DDL.
 |---|---|
 | `schema.sql` | `CREATE TABLE`s + sample `INSERT`s. Idempotent — re-run on a fresh db file. |
 | `queries.sql` | The example dashboard queries from `backend.md`, runnable. |
-| `airtrek-sample.db` | The resulting database (~140 KB). Checked in for convenience. |
+| `airtrek-sample.db` | The resulting database (~130 KB). Checked in for convenience. |
 
 ## Re-seed from scratch
 
@@ -42,12 +42,13 @@ You'll see, in order:
 4. **Daily counts** — zero-filled across the 30-day window.
 5. **Hourly distribution** — divides by the *actual* day span, so a new deployment isn't under-reported.
 6. **Per-tug usage** — counts + total distance per tug, what Fleet Status shows.
-7. **Per-operator usage** — derived via the new `operator` table.
+7. **Per-operator usage** — derived via the `operator` table.
 8. **Per-robot usage** — derived via the `mission_robot` join table.
 9. **Flagged for Review** — count of flagged missions.
-10. **Recent missions** — what the History view paginates, with operator/tug/route joined in.
-11. **Drill-down on mission 3** — events, bags (multi-bag mission), and media — what the detail drawer reads.
-12. **Pipeline health** — bags not yet finished post-processing.
+10. **Pipeline health** — `classification × status` breakdown across every bag the cloud has ever seen.
+11. **Recent missions** — what the History view paginates, with operator/tug/route joined in.
+12. **Drill-down on mission 3** — events, media, and the (single, 1:1) source bag from `mission_processing`.
+13. **Dummy / pending bags** — bags the classifier dropped or hasn't run on yet; live only in `mission_processing` with no `mission` row.
 
 ## Poke around interactively
 
@@ -62,16 +63,19 @@ sqlite> .quit
 
 ## What this lets you verify
 
-- **The schema is workable** — eleven tables, foreign keys, partial index on
+- **The schema is workable** — ten tables, foreign keys, partial index on
   `flagged`, CHECK constraints on every enum-like column, UNIQUE on
   `(mission_id, kind)` for media — all run cleanly.
-- **Idempotency primitives are in place** — `mission.hmi_mission_uuid`,
-  `event.client_uuid`, `mission_bag.bag_key`, `mission_media.r2_key` all
-  enforce uniqueness so re-running the post-processor on the same bag
-  converges instead of duplicating rows.
+- **Idempotency primitives are in place** — `mission.source_bag_key`,
+  `event.client_uuid`, `mission_media.r2_key`, and
+  `mission_processing.bag_key` all enforce uniqueness so re-running the
+  post-processor on the same bag converges instead of duplicating rows.
 - **Every dashboard card and chart is one indexed query** against `mission`
   (joining the relevant lookup tables).
-- **Multi-bag missions work** — mission 3 spans two bags grouped by
-  `hmi_mission_uuid`.
+- **The real-vs-dummy classifier is first-class.** Two of the seeded
+  rows in `mission_processing` are dummy bags (`classification='dummy'`,
+  `status='done_dummy'`) with no `mission` row, so the dashboard sees
+  only the 8 real missions while the pipeline keeps an audit trail of
+  what was dropped and why.
 - **No code is needed** to introspect the data — `sqlite3` + a query is enough,
   which is also how you'll debug the live D1 database via `wrangler d1 execute`.

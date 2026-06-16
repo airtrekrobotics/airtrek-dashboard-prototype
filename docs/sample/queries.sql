@@ -1,4 +1,4 @@
--- Example dashboard queries against the sample database (schema v0.2).
+-- Example dashboard queries against the sample database (schema v0.3).
 -- Run with:
 --   sqlite3 airtrek-sample.db < queries.sql
 
@@ -41,7 +41,7 @@ LEFT JOIN (
 ) c ON c.day = days.d
 ORDER BY day;
 
-SELECT '── Hourly distribution (divides by ACTUAL day span, zero-filled hours) ──' AS '';
+SELECT '── Hourly distribution (divides by ACTUAL day span) ──' AS '';
 WITH RECURSIVE hours(h) AS (
   SELECT 0 UNION ALL SELECT h+1 FROM hours WHERE h < 23
 ), span AS (
@@ -86,6 +86,13 @@ GROUP BY r.id;
 SELECT '── Flagged for Review ──' AS '';
 SELECT COUNT(*) AS flagged_count FROM mission WHERE flagged = 1;
 
+SELECT '── Pipeline health: classification × status ──' AS '';
+.width 16 12 6
+SELECT classification, status, COUNT(*) AS n
+FROM mission_processing
+GROUP BY classification, status
+ORDER BY classification, status;
+
 SELECT '── Recent missions (History view, joined to lookup tables) ──' AS '';
 .width 4 19 9 18 12 22 8 12 7
 SELECT m.id, m.started_at, m.tail_number,
@@ -106,17 +113,21 @@ SELECT '── Drill-down: mission 3 events ──' AS '';
 SELECT id, mission_id, occurred_at, offset_seconds, type, severity
 FROM event WHERE mission_id = 3 ORDER BY occurred_at;
 
-SELECT '── Drill-down: mission 3 bags (multi-bag mission) ──' AS '';
-.width 4 9 50 21
-SELECT mission_id, sequence, bag_key, started_at FROM mission_bag WHERE mission_id = 3 ORDER BY sequence;
-
 SELECT '── Drill-down: mission 3 media ──' AS '';
 .width 3 4 16 36 10 10 9
 SELECT id, mission_id, kind, r2_key, content_type, bytes, duration_seconds
 FROM mission_media WHERE mission_id = 3;
 
-SELECT '── Pipeline health: bags not yet processed ──' AS '';
-SELECT bag_key, status, attempt_count, last_error
+SELECT '── Drill-down: mission 3 source bag (1:1) ──' AS '';
+.width 50 12 14 16
+SELECT mp.bag_key, mp.status, mp.classification, mp.bytes
+FROM mission_processing mp
+JOIN mission m ON m.source_bag_key = mp.bag_key
+WHERE m.id = 3;
+
+SELECT '── Dummy / pending bags (no mission row) ──' AS '';
+.width 50 12 14 22
+SELECT bag_key, status, classification, classification_reason
 FROM mission_processing
-WHERE status IN ('queued','parsing','transcoding','failed')
+WHERE mission_id IS NULL
 ORDER BY bag_key;
