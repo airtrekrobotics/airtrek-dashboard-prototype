@@ -74,8 +74,8 @@ sqlite> .quit
   (joining the relevant lookup tables).
 - **The real-vs-dummy classifier is first-class.** Two of the seeded
   rows in `mission_processing` are dummy bags (`classification='dummy'`,
-  `status='done_dummy'`) with no `mission` row, so the dashboard sees
-  only the 8 real missions while the pipeline keeps an audit trail of
-  what was dropped and why.
+  `status='done'`) with no `mission` row, so the dashboard sees only
+  the 8 real missions while the pipeline keeps an audit trail of what
+  was dropped and why.
 - **No code is needed** to introspect the data — `sqlite3` + a query is enough,
   which is also how you'll debug the live D1 database via `wrangler d1 execute`.

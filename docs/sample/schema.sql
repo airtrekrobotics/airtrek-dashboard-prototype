@@ -91,9 +91,7 @@ CREATE TABLE mission_robot (
 CREATE TABLE mission_processing (
   bag_key               TEXT PRIMARY KEY,
   mission_id            INTEGER REFERENCES mission(id),
-  status                TEXT NOT NULL CHECK (status IN (
-                          'queued','classifying','parsing','transcoding',
-                          'done','done_dummy','failed')),
+  status                TEXT NOT NULL CHECK (status IN ('queued','processing','done','failed')),
   classification        TEXT NOT NULL DEFAULT 'unknown'
                         CHECK (classification IN ('unknown','real','dummy')),
   classification_reason TEXT,
@@ -195,9 +193,9 @@ INSERT INTO mission_processing (bag_key, mission_id, status, classification, cla
   -- A bag that just landed in R2; classifier hasn't run yet.
   ('raw/sucw/robot_1/airtrek_customer_robot_1_009.mcap', NULL, 'queued', 'unknown', NULL, 0, NULL, NULL, NULL, NULL),
   -- Dummies. Operator summoned but cancelled before deploy → no aircraft engagement.
-  ('raw/sucw/robot_1/airtrek_customer_robot_1_010.mcap', NULL, 'done_dummy', 'dummy', 'no_wingwalking', 1, 184549376, 980, datetime('now','-6 hours','+5 minutes'), datetime('now','-6 hours','+5 minutes')),
+  ('raw/sucw/robot_1/airtrek_customer_robot_1_010.mcap', NULL, 'done', 'dummy', 'no_wingwalking', 1, 184549376, 980, datetime('now','-6 hours','+5 minutes'), datetime('now','-6 hours','+5 minutes')),
   -- Dummy. Off-Jetson dev bag — no video, no aircraft.
-  ('raw/sucw/robot_1/airtrek_customer_dev_001.mcap',     NULL, 'done_dummy', 'dummy', 'off_jetson_no_video', 1, 3145728, 420, datetime('now','-2 days','-3 hours'), datetime('now','-2 days','-3 hours'));
+  ('raw/sucw/robot_1/airtrek_customer_dev_001.mcap',     NULL, 'done', 'dummy', 'off_jetson_no_video', 1, 3145728, 420, datetime('now','-2 days','-3 hours'), datetime('now','-2 days','-3 hours'));
 
 INSERT INTO event (client_uuid, mission_id, occurred_at, offset_seconds, type, severity) VALUES
   ('evt_8a3e1c-7b9d-001', 3, datetime('now','-1 day','-2 hours','+7 minutes'),  420, 'obstacle_proximity', 'warning'),

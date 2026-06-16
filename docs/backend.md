@@ -128,9 +128,7 @@ CREATE TABLE mission_robot (
 CREATE TABLE mission_processing (
   bag_key               TEXT PRIMARY KEY,
   mission_id            INTEGER REFERENCES mission(id),         -- NULL for dummies
-  status                TEXT NOT NULL CHECK (status IN (
-                          'queued','classifying','parsing','transcoding',
-                          'done','done_dummy','failed')),
+  status                TEXT NOT NULL CHECK (status IN ('queued','processing','done','failed')),
   classification        TEXT NOT NULL DEFAULT 'unknown'
                         CHECK (classification IN ('unknown','real','dummy')),
   classification_reason TEXT,                                    -- e.g. 'no_wingwalking', 'off_jetson_no_video'
@@ -298,9 +296,11 @@ on dock, airtrek_uploader
                                                                   │ real = any mission_state=='wingwalking'│
                                                                   │     OR any command==AIRCRAFT_SELECT  │
                                                                   │ dummy otherwise.                     │
-                                                                  │ Write mission_processing(            │
-                                                                  │   classification, status='done_dummy'│
-                                                                  │   or continue with 'parsing').      │
+                                                                  │ Update mission_processing:           │
+                                                                  │  - dummy → classification='dummy',   │
+                                                                  │    status='done' (terminal)          │
+                                                                  │  - real  → classification='real',    │
+                                                                  │    status='processing' (continue)    │
                                                                   └──────────────────────────────────────┘
                                                                                 │
                                                                   ┌─ if dummy ─┘   ┌─ if real ─┐
