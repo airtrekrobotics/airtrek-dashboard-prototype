@@ -1,14 +1,18 @@
-# Airtrek Dashboard — Backend Design Notes (v0.3)
+# Airtrek Dashboard — Backend Design Notes (v0.4)
 
 A design doc for the backend that will feed the
 [customer-facing dashboard](https://airtrekrobotics.github.io/airtrek-dashboard-prototype/).
 The dashboard today runs on a seeded mock dataset; this doc sketches what it
 takes to swap that for a real Cloudflare-native backend.
 
-**Status:** v0.3 — replaces v0.2's multi-bag-grouping machinery (HMI mission
-UUID + `mission_bag` join) with a 1:1 bag↔mission model, and adds a cheap
-**real-vs-dummy** classification step to the ingest pipeline. The
-[v0.1 → v0.2 review](backend-review.md) findings are still in effect.
+**Status:** v0.4 — same schema as v0.3, but **the ingest pipeline becomes
+hybrid**: the NX at the charging station performs the real-vs-dummy
+classification locally and emits a 1 KB sidecar JSON, while heavy
+extraction stays in the cloud. The change was forced by the discovery
+that MCAP bags ship with chunk compression on — which made a cloud-side
+classifier 50× more expensive and broke the "byte-range read two channels"
+trick. The [v0.1 → v0.2 review](backend-review.md) findings are still in
+effect.
 
 ## Stack
 
@@ -27,7 +31,7 @@ synchronous multi-region.
 ## Contents
 1. [Schema](#1-schema)
 2. [How the dashboard maps to the schema](#2-how-the-dashboard-maps-to-the-schema)
-3. [Ingest — bag → R2 → classifier → post-processor → D1](#3-ingest--bag--r2--classifier--post-processor--d1)
+3. [Ingest — NX classifies; cloud extracts (hybrid)](#3-ingest--nx-classifies-cloud-extracts-hybrid)
 4. [Read API for the dashboard](#4-read-api-for-the-dashboard)
 5. [Open questions](#5-open-questions)
 6. [Cost considerations](#6-cost-considerations)
@@ -257,15 +261,19 @@ SELECT classification, status, COUNT(*) FROM mission_processing
 GROUP BY classification, status;
 ```
 
-## 3. Ingest — bag → R2 → classifier → post-processor → D1
+## 3. Ingest — NX classifies; cloud extracts (hybrid)
 
-The robot and the dashboard never touch each other directly. Raw MCAP bags
-are durable in R2; everything in D1 is **derived** from them and is fully
-reproducible if extraction logic changes.
+The robot and the dashboard never touch each other directly. Raw MCAP
+bags are durable in R2; everything in D1 is **derived** from them and is
+fully reproducible if extraction logic changes. **The NX at the charging
+station performs the real-vs-dummy classification locally** (it already
+has the bag uncompressed in memory from recording) and emits a 1 KB
+sidecar JSON; **the cloud worker reads that sidecar first** and only
+runs the expensive extraction on real bags.
 
 ```
-ROBOT (Jetson)                  CHARGING STATION (NX + NAS)        CLOUDFLARE
-─────────────────               ────────────────────────────       ──────────
+ROBOT (Jetson)                  CHARGING STATION (NX + NAS)              CLOUDFLARE
+─────────────────               ────────────────────────────             ──────────
 
 customer_recorder writes
   /data/bags/airtrek_customer_*.mcap
@@ -273,67 +281,65 @@ customer_recorder writes
 on dock, airtrek_uploader
   pushes bag → NAS        ───▶  NAS: <facility>/<robot>/<bag>.mcap
                                        │
-                                       │ nx_sync (rclone or small daemon):
-                                       │   - watches NAS for new bags
-                                       │   - PUTs to R2 via S3 API
-                                       │   - multipart for large bags
-                                       │   - idempotent (key + If-None-Match)
                                        ▼
-                                                                  R2: raw/<site>/<robot>/<bag>.mcap
-                                                                       │
-                                                                       │ R2 event notification
-                                                                       ▼
-                                                                  Cloudflare Queues
-                                                                       │
-                                                                       ▼
-                                                                  Container worker "mission_ingest"
+                                ┌─── nx_sync (small daemon on NX) ──────────────┐
+                                │ For each new bag:                             │
+                                │ 1. CLASSIFY locally (~free; NX has GPU and    │
+                                │    can decompress chunks cheaply):            │
+                                │      read /autonomy/state                     │
+                                │           /hmi/mission_command                │
+                                │      real = any mission_state=='wingwalking'  │
+                                │          OR any command==AIRCRAFT_SELECT      │
+                                │ 2. Write sidecar <bag>.json:                  │
+                                │      { classification, classification_reason, │
+                                │        wingwalking_seen, aircraft_selected,   │
+                                │        classifier_version, classified_at,     │
+                                │        nx_hostname }                          │
+                                │ 3. PUT <bag>.mcap  → R2                       │
+                                │ 4. PUT <bag>.json  → R2                       │
+                                │    (sidecar LAST — its arrival is what kicks  │
+                                │     off the cloud worker)                     │
+                                └───────────────────────────────────────────────┘
+                                       │
+                                       ▼
+                                                                R2: raw/<site>/<robot>/<bag>.mcap
+                                                                R2: raw/<site>/<robot>/<bag>.json
+                                                                     │
+                                                                     │ R2 event on .json
+                                                                     ▼
+                                                                Cloudflare Queues
+                                                                     │
+                                                                     ▼
+                                                                Container worker "mission_ingest"
 
-                                                                  ┌─── CLASSIFY (cheap; indexed read) ───┐
-                                                                  │ Read only two channels via MCAP      │
-                                                                  │ summary/index (~2–3 MB total):       │
-                                                                  │   /autonomy/state                    │
-                                                                  │   /hmi/mission_command               │
-                                                                  │ real = any mission_state=='wingwalking'│
-                                                                  │     OR any command==AIRCRAFT_SELECT  │
-                                                                  │ dummy otherwise.                     │
-                                                                  │ Update mission_processing:           │
-                                                                  │  - dummy → classification='dummy',   │
-                                                                  │    status='done' (terminal)          │
-                                                                  │  - real  → classification='real',    │
-                                                                  │    status='processing' (continue)    │
-                                                                  └──────────────────────────────────────┘
-                                                                                │
-                                                                  ┌─ if dummy ─┘   ┌─ if real ─┐
-                                                                  │                 ▼
-                                                                  │           ┌── EXTRACT ───────────────┐
-                                                                  ▼           │ Full MCAP stream:          │
-                                                                STOP          │   /hmi/mission_command     │
-                                                                              │   (1st = SUMMON →          │
-                                                                              │    route_from)             │
-                                                                              │   /hmi/telemetry           │
-                                                                              │   (active_tail, operator)  │
-                                                                              │   /autonomy/state          │
-                                                                              │   (timestamps,             │
-                                                                              │    final GPS → route_to)   │
-                                                                              │   /robot/telemetry,        │
-                                                                              │   /robot_2/telemetry       │
-                                                                              │   (distance, max_speed,    │
-                                                                              │    battery_end)            │
-                                                                              │   /customer/*/image_h264   │
-                                                                              │   <events topic, TBD>      │
-                                                                              │                            │
-                                                                              │ ffmpeg -c copy: H264 → MP4 │
-                                                                              │ PUT derived → R2           │
-                                                                              │                            │
-                                                                              │ UPSERT D1:                 │
-                                                                              │   operator (by external_id)│
-                                                                              │   mission (by              │
-                                                                              │     source_bag_key)        │
-                                                                              │   mission_robot, event,    │
-                                                                              │   mission_media            │
-                                                                              │ mission_processing.status  │
-                                                                              │   = 'done'                 │
-                                                                              └────────────────────────────┘
+                                                                1. GET sidecar (~1 KB, free)
+                                                                2. UPSERT mission_processing:
+                                                                   - classification + reason from sidecar
+                                                                   - status='done' if dummy (TERMINAL)
+                                                                   - status='processing' if real (continue)
+                                                                3. If dummy → STOP. Bag stays in R2 for
+                                                                   audit; the mission_processing row is
+                                                                   the only artifact.
+                                                                4. If real → EXTRACT (pays the
+                                                                   chunk-decompression cost on the way
+                                                                   through, but only for real bags):
+                                                                     - Stream MCAP from R2
+                                                                     - Parse topics:
+                                                                       · /hmi/mission_command  → route_from
+                                                                       · /hmi/telemetry        → tail, operator
+                                                                       · /autonomy/state       → timestamps,
+                                                                                                  final GPS → route_to
+                                                                       · /robot/telemetry,
+                                                                         /robot_2/telemetry    → distance, max_speed, battery_end
+                                                                       · /customer/*/image_h264 → H264 access units
+                                                                       · <events topic, TBD>    → event rows
+                                                                     - ffmpeg -c copy: H264 → MP4
+                                                                     - PUT derived/missions/<id>/<kind>.mp4 → R2
+                                                                     - UPSERT D1:
+                                                                         operator (by external_id),
+                                                                         mission   (by source_bag_key),
+                                                                         mission_robot, event, mission_media
+                                                                     - mission_processing.status = 'done'
 on R2 ack + verify,
   airtrek_uploader prunes
   the local bag
@@ -341,25 +347,36 @@ on R2 ack + verify,
 
 ### Key properties
 
-- **Classifier-first.** The cheap indexed read happens before any video
-  work. ~$1e-5/bag, sub-second. Dummies cost essentially nothing and never
-  create a mission row, never trigger video transcoding, never appear in
-  the dashboard. They live only in `mission_processing` for audit.
+- **NX classifies; cloud extracts.** Heavy work (telemetry extraction,
+  video muxing, D1 writes) still happens in the Container worker. The
+  ONLY job that moved to the NX is the cheap, locality-friendly one:
+  the real-vs-dummy decision. The NX has the bag uncompressed in memory
+  immediately after recording — perfectly placed to read the two
+  classifier channels with zero cloud cost. The verdict travels as a
+  1 KB JSON sidecar.
 
-- **Edge does not post-process.** NX/NAS only shuttles bags. All
-  extraction, transcoding, and D1 writes happen in the Container worker
-  triggered by R2 events. Raw data is immutable + reproducible from R2;
-  facility hardware is out of the business-logic deployment loop.
+- **R2 stays the single source of truth.** Even dummy bags upload (both
+  bag and sidecar land in R2) — the cloud retains every artifact it
+  would need to re-classify or re-derive later, even if a future NX
+  classifier version turns out to be buggy. Dummy-bag retention can be
+  shorter than real-bag retention (open question #5).
+
+- **Cloud-side fallback.** If a bag lands without a sidecar (NX bug,
+  manual upload, sidecar upload failed after bag), the cloud worker
+  falls back to its own MCAP-side classifier on the bag. That path now
+  pays the chunk-decompression cost (~$5e-4/bag) — slow and expensive
+  but correct. `mission_processing.last_error` records the fallback so
+  we can find and fix the NX side.
 
 - **Idempotency at every hop.**
   - Bag → R2: keyed by `raw/<site>/<robot>/<filename>`; re-upload is a no-op (`If-None-Match`).
   - R2 → Queue: dedup by message body (the R2 key).
   - Queue → D1: every write is `INSERT … ON CONFLICT DO NOTHING` keyed on a stable identifier — `mission.source_bag_key`, `event.client_uuid`, `mission_media.r2_key`, etc. Re-running the post-processor against the same bag converges.
 
-- **One real bag → one mission.** The customer_recorder closes a bag only
-  on return-to-idle, which is the natural mission boundary. Multiple
-  summons within one excursion stay in the same bag (per the recorder
-  design). No multi-bag grouping needed.
+- **One real bag → one mission.** The customer_recorder closes a bag
+  only on return-to-idle, which is the natural mission boundary.
+  Multiple summons within one excursion stay in the same bag (per the
+  recorder design). No multi-bag grouping needed.
 
 - **Start point (`route_from_id`).** Read from the first
   `/hmi/mission_command` message of the bag:
@@ -378,33 +395,49 @@ on R2 ack + verify,
   shipping yet, `event` stays empty — no derivation engine required.
 
 - **Auth (writes).** The NX uploader authenticates to R2 with a
-  **Cloudflare R2 access key pair** (S3-compatible), created and rotated
-  in the Cloudflare dashboard. The key lives on the NX as a local
-  secret; rotation/revocation goes through Cloudflare's standard token
-  UI — no app table needed. (If a future workflow does require a
-  live-write API directly from a robot, a dedicated credential table
-  is a one-statement migration away.)
+  **Cloudflare R2 access key pair** (S3-compatible), created and
+  rotated in the Cloudflare dashboard. The key lives on the NX as a
+  local secret; rotation/revocation goes through Cloudflare's standard
+  token UI — no app table needed.
 
 - **Time.** Robots stamp timestamps in UTC. The post-processor compares
   to wall-clock on ingest and flags bags with skew > 5 min for review.
 
-### Pipeline assumption worth flagging
+### Sidecar contract
 
-The cheap classifier (~$1e-5/bag) **relies on the recorder writing bags
-uncompressed with a full MCAP index** (current `mcap_writer.yaml` setting,
-`compression: None`). With that, the classifier byte-range-reads two small
-channels and skips the video entirely.
+The NX writes exactly one JSON file per bag, same prefix as the bag itself
+(so they sort together in R2 listings):
 
-**If the dock uploader later turns on bag-wide chunk compression**, indexed
-seeking no longer avoids decompression — the classifier suddenly pays
-near-full-bag CPU+I/O. Two mitigations to keep ready:
+```json
+{
+  "bag_key": "raw/<site>/<robot>/<bag>.mcap",
+  "classification": "real" | "dummy",
+  "classification_reason": "wingwalking_seen"
+                        | "aircraft_selected"
+                        | "no_wingwalking"
+                        | "off_jetson_no_video"
+                        | "aborted_before_deploy"
+                        | …,
+  "wingwalking_seen": true | false,
+  "aircraft_selected": true | false,
+  "classifier_version": "1.0.0",
+  "classified_at": "2026-…Z",
+  "nx_hostname": "kptk-charge-01"
+}
+```
 
-1. Ask the uploader team to keep data channels uncompressed (or compress
-   per-channel), so indexed seeking stays cheap.
-2. Have the uploader emit a small sidecar JSON next to each MCAP with the
-   classification verdict (and a few key stats). The classifier becomes
-   "read 1 KB JSON" instead of "MCAP byte-range read." Pre-decides the
-   real/dummy question before the post-processor even runs.
+Notes:
+- The cloud worker is triggered by the **sidecar** object's R2 event,
+  not by the bag's — this ensures we never run extraction before the
+  verdict is in.
+- The bag and sidecar MUST share the prefix (`<bag>.mcap` /
+  `<bag>.json`); the cloud worker derives the bag key from the sidecar
+  key.
+- `classifier_version` lets the cloud detect stale NX deployments;
+  later we can decide to re-classify on the cloud as a sample if needed.
+- The sidecar is the source of truth for `mission_processing.classification`
+  and `mission_processing.classification_reason` — the cloud worker
+  copies them verbatim.
 
 ## 4. Read API for the dashboard
 
@@ -453,34 +486,49 @@ mission lands within a minute.
    recorder before the first production bag.
 8. **Tug provenance.** When/how does HMI start sending tug selection?
    `mission.tug_id` stays NULL until then.
-9. **Uploader compression.** If the dock uploader turns on chunk-level
-   compression, the cheap classifier path collapses. Either: (a) keep
-   data channels uncompressed; (b) have the uploader emit a 1 KB sidecar
-   JSON with the verdict; (c) accept ~50–100× higher classifier cost.
+9. ~~**Uploader compression.** If the dock uploader turns on chunk-level
+   compression, the cheap classifier path collapses.~~ **Resolved in
+   v0.4:** chunk compression is on, and the classifier moved to the NX
+   via a sidecar JSON (§3). The cloud worker now reads ~1 KB JSON
+   instead of doing any MCAP I/O for classification.
 
 ## 6. Cost considerations
 
 Numbers are order-of-magnitude on Cloudflare's current public pricing,
-parameterized on **30-min missions** with multiple H264 video feeds.
-The post-processor never re-encodes video (`ffmpeg -c copy` muxes H264
-access units into MP4 containers), which is what keeps compute near-free.
+parameterized on **30-min missions** with multiple H264 video feeds and
+chunk-compressed MCAP bags. The post-processor never re-encodes video
+(`ffmpeg -c copy` muxes H264 access units into MP4 containers); the
+classifier work runs free on the NX.
 
-**Classifier (every bag):** indexed MCAP read of ~2–3 MB → ~$1e-5/bag,
-sub-second. Negligible.
+**NX classifier (every bag):** uses already-paid-for hardware on the
+charging station. No cloud cost.
 
-**Full extraction (real bags only):** ~30–60 s of wall-clock on 1 vCPU /
-1 GB RAM. On Cloudflare Containers (~$0.000089/(vCPU-s + GiB-s)), about
-**$0.005 per real bag**. Dummy bags stop at the classifier.
+**Cloud sidecar read (every bag):** ~1 KB GET from R2 + a few D1
+writes. Effectively free.
 
-| Scale | Bags/day (incl. dummies) | Compute | R2 storage (raw + derived) | Total |
+**Cloud extraction (real bags only):** ~30–60 s of wall-clock on
+1 vCPU / 1 GB RAM, plus chunk decompression overhead from the
+compressed bag. On Cloudflare Containers (~$0.000089/(vCPU-s + GiB-s)),
+about **~$0.008–$0.010 per real bag**. Dummies skip this step.
+
+| Scale | Bags/day (≈70% real) | Cloud compute | R2 storage (raw + derived) | Total |
 |---|---|---|---|---|
-| 1 facility, 30/day | 30 | ~$5/mo | ~$30/mo | **~$35/mo** |
-| 5 facilities, 50/day each | 250 | ~$40/mo | ~$150/mo | **~$190/mo** |
-| 20 facilities, 50/day each | 1,000 | ~$160/mo | ~$600/mo | **~$760/mo** |
+| 1 facility, 30/day | 30 | ~$6/mo | ~$30/mo | **~$36/mo** |
+| 5 facilities, 50/day each | 250 | ~$50/mo | ~$150/mo | **~$200/mo** |
+| 20 facilities, 50/day each | 1,000 | ~$200/mo | ~$600/mo | **~$800/mo** |
 
-Assumes ~70/30 real/dummy. D1 reads/writes stay free-tier at all scales.
-R2 egress is free. Escape hatch when the numbers get inconvenient is a
-$5–10/mo VPS draining the same Queue.
+D1 reads/writes stay free-tier at all scales. R2 egress is free. Escape
+hatch when the numbers get inconvenient is a $5–10/mo VPS draining the
+same Queue.
+
+**Why hybrid is worth the small added complexity:** with chunk-compressed
+bags, a pure-cloud classifier would cost ~$5e-4/bag (50× the
+uncompressed-bag estimate) — small per bag but it scales linearly with
+EVERY bag, including dummies. Moving classification to the NX restores
+the "trivial per-bag classifier" property without giving up R2 as
+source of truth. Dollar savings at modest scale are ~$5–15/mo, but
+latency drops sub-second and the cloud-side compute scales cleanly with
+only the bags that earned full extraction.
 
 **What would change the math:** re-encoding video for adaptive streaming
 (~$0.05–0.30/bag, 10–60×); ML inference on video to derive events

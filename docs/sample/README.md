@@ -1,4 +1,4 @@
-# Sample SQLite Database (schema v0.3)
+# Sample SQLite Database (schema v0.3 / pipeline v0.4)
 
 A tiny working version of the [backend schema](../backend.md) — nine tables
 seeded with a handful of real missions plus a couple of dummy bags, so you
@@ -76,6 +76,8 @@ sqlite> .quit
   rows in `mission_processing` are dummy bags (`classification='dummy'`,
   `status='done'`) with no `mission` row, so the dashboard sees only
   the 8 real missions while the pipeline keeps an audit trail of what
-  was dropped and why.
+  was dropped and why. In production (pipeline v0.4) those verdicts
+  come from a JSON sidecar the NX writes next to each bag in R2; the
+  sample DB just shows the post-conditions in `mission_processing`.
 - **No code is needed** to introspect the data — `sqlite3` + a query is enough,
   which is also how you'll debug the live D1 database via `wrangler d1 execute`.
