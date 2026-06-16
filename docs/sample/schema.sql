@@ -89,7 +89,7 @@ CREATE INDEX idx_mission_flagged  ON mission(flagged) WHERE flagged = 1;
 CREATE TABLE mission_robot (
   mission_id    INTEGER NOT NULL REFERENCES mission(id) ON DELETE CASCADE,
   robot_id      INTEGER NOT NULL REFERENCES robot(id),
-  side          TEXT NOT NULL CHECK (side IN ('port','starboard')),
+  side          TEXT NOT NULL CHECK (side IN ('left','right')),
   battery_start INTEGER,
   battery_end   INTEGER,
   PRIMARY KEY (mission_id, robot_id)
@@ -181,14 +181,14 @@ VALUES
 
 -- Both robots participate in every mission (port + starboard wingtip).
 INSERT INTO mission_robot (mission_id, robot_id, side, battery_start, battery_end) VALUES
-  (1, 1, 'port', 96, 84), (1, 2, 'starboard', 95, 82),
-  (2, 1, 'port', 99, 88), (2, 2, 'starboard', 98, 86),
-  (3, 1, 'port', 88, 72), (3, 2, 'starboard', 90, 70),
-  (4, 1, 'port', 82, 65), (4, 2, 'starboard', 85, 63),
-  (5, 1, 'port', 99, 91), (5, 2, 'starboard', 98, 89),
-  (6, 1, 'port', 94, 78), (6, 2, 'starboard', 96, 76),
-  (7, 1, 'port', 97, 84), (7, 2, 'starboard', 95, 82),
-  (8, 1, 'port', 95, 81), (8, 2, 'starboard', 94, 79);
+  (1, 1, 'left', 96, 84), (1, 2, 'right', 95, 82),
+  (2, 1, 'left', 99, 88), (2, 2, 'right', 98, 86),
+  (3, 1, 'left', 88, 72), (3, 2, 'right', 90, 70),
+  (4, 1, 'left', 82, 65), (4, 2, 'right', 85, 63),
+  (5, 1, 'left', 99, 91), (5, 2, 'right', 98, 89),
+  (6, 1, 'left', 94, 78), (6, 2, 'right', 96, 76),
+  (7, 1, 'left', 97, 84), (7, 2, 'right', 95, 82),
+  (8, 1, 'left', 95, 81), (8, 2, 'right', 94, 79);
 
 -- Pipeline state. 8 real (done), 1 queued (just landed), 2 dummies.
 INSERT INTO mission_processing (bag_key, mission_id, status, classification, classification_reason, attempt_count, bytes, duration_ms, started_at, completed_at) VALUES

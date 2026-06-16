@@ -126,7 +126,7 @@ CREATE INDEX idx_mission_flagged  ON mission(flagged) WHERE flagged = 1;
 CREATE TABLE mission_robot (
   mission_id    INTEGER NOT NULL REFERENCES mission(id) ON DELETE CASCADE,
   robot_id      INTEGER NOT NULL REFERENCES robot(id),
-  side          TEXT NOT NULL CHECK (side IN ('port','starboard')),
+  side          TEXT NOT NULL CHECK (side IN ('left','right')),
   battery_start INTEGER,
   battery_end   INTEGER,
   PRIMARY KEY (mission_id, robot_id)
