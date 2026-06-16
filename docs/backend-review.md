@@ -1,9 +1,18 @@
 # Backend Design Review
 
+> **Status — historical (2026-06-16).** This review audited **schema v0.1**.
+> All **critical** and **important** items below have been addressed in
+> **schema v0.2** ([backend.md](backend.md), [sample/](sample/)). The
+> document is retained as the record of how the v0.2 schema arrived at its
+> current shape; the open architectural questions in `backend.md` §5
+> remain outstanding.
+
 Pre-implementation audit of [backend.md](backend.md) + [sample/](sample/),
 intended for the engineering committee. Findings were verified against the
-checked-in [airtrek-sample.db](sample/airtrek-sample.db); each defect below
-has a reproduction snippet against that file.
+v0.1 [airtrek-sample.db](sample/airtrek-sample.db); each defect below has a
+reproduction snippet that ran against that v0.1 file (those probes will now
+*fail* — i.e. the constraint kicks in — against the v0.2 sample DB, which
+is the point).
 
 ## Executive summary
 
