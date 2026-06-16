@@ -1,6 +1,6 @@
 # Sample SQLite Database (schema v0.3)
 
-A tiny working version of the [backend schema](../backend.md) — ten tables
+A tiny working version of the [backend schema](../backend.md) — nine tables
 seeded with a handful of real missions plus a couple of dummy bags, so you
 can poke at it and see how the dashboard's metrics map to real SQL and how
 the post-processing pipeline classifies what it sees.
@@ -63,7 +63,7 @@ sqlite> .quit
 
 ## What this lets you verify
 
-- **The schema is workable** — ten tables, foreign keys, partial index on
+- **The schema is workable** — nine tables, foreign keys, partial index on
   `flagged`, CHECK constraints on every enum-like column, UNIQUE on
   `(mission_id, kind)` for media — all run cleanly.
 - **Idempotency primitives are in place** — `mission.source_bag_key`,

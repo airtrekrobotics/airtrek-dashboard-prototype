@@ -45,15 +45,6 @@ CREATE TABLE robot (
   last_seen_at TEXT
 );
 
-CREATE TABLE robot_credential (
-  id           INTEGER PRIMARY KEY,
-  robot_id     INTEGER NOT NULL REFERENCES robot(id) ON DELETE CASCADE,
-  key_hash     TEXT NOT NULL UNIQUE,
-  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-  revoked_at   TEXT,
-  last_used_at TEXT
-);
-
 CREATE TABLE operator (
   id          INTEGER PRIMARY KEY,
   external_id TEXT NOT NULL UNIQUE,

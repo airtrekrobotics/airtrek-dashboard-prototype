@@ -34,7 +34,7 @@ synchronous multi-region.
 
 ## 1. Schema
 
-Ten tables. One real bag → one mission, anchored by `mission.source_bag_key`.
+Nine tables. One real bag → one mission, anchored by `mission.source_bag_key`.
 Dummy bags are recognized at the classifier stage and never produce a
 mission row; they're tracked only in `mission_processing` for audit.
 
@@ -76,16 +76,6 @@ CREATE TABLE robot (
   battery_pct  INTEGER,                                          -- last reported
   condition    TEXT,
   last_seen_at TEXT
-);
-
--- Long-lived API keys for the NX uploader (and any future direct writers).
-CREATE TABLE robot_credential (
-  id           INTEGER PRIMARY KEY,
-  robot_id     INTEGER NOT NULL REFERENCES robot(id) ON DELETE CASCADE,
-  key_hash     TEXT NOT NULL UNIQUE,                            -- bcrypt/argon2 of the bearer token
-  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-  revoked_at   TEXT,
-  last_used_at TEXT
 );
 
 -- Operators (HMI tablet users). Auto-registered on first sighting by external_id.
@@ -387,10 +377,13 @@ on R2 ack + verify,
   carries a UUID that becomes `event.client_uuid`. If the topic isn't
   shipping yet, `event` stays empty — no derivation engine required.
 
-- **Auth (writes).** The NX uploader (and any future direct-write robot)
-  holds a long-lived bearer token; the server compares its
-  bcrypt/argon2 hash to `robot_credential.key_hash`. Rotation = insert
-  new + revoke old (set `revoked_at`).
+- **Auth (writes).** The NX uploader authenticates to R2 with a
+  **Cloudflare R2 access key pair** (S3-compatible), created and rotated
+  in the Cloudflare dashboard. The key lives on the NX as a local
+  secret; rotation/revocation goes through Cloudflare's standard token
+  UI — no app table needed. (If a future workflow does require a
+  live-write API directly from a robot, a dedicated credential table
+  is a one-statement migration away.)
 
 - **Time.** Robots stamp timestamps in UTC. The post-processor compares
   to wall-clock on ingest and flags bags with skew > 5 min for review.
